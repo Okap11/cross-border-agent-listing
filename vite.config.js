@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/cross-border-agent-listing/',
   plugins: [vue()],
   resolve: {
     alias: {
