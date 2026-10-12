@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx'
  * @param {string} filename 文件名（不含扩展名）
  * @param {string} sheetName 工作表名
  */
-export function exportSheet(rows, filename, sheetName = 'Sheet1') {
+export const exportSheet = (rows, filename, sheetName = 'Sheet1') => {
   const ws = XLSX.utils.json_to_sheet(rows)
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, sheetName)
@@ -14,7 +14,7 @@ export function exportSheet(rows, filename, sheetName = 'Sheet1') {
 }
 
 /** 导出为 CSV（带 BOM，Excel 打开不乱码） */
-export function exportCsv(rows, filename) {
+export const exportCsv = (rows, filename) => {
   const ws = XLSX.utils.json_to_sheet(rows)
   const csv = XLSX.utils.sheet_to_csv(ws)
   // 加 BOM 保证 UTF-8 中文在 Excel 正常显示
@@ -32,7 +32,7 @@ export function exportCsv(rows, filename) {
  * @param {File} file
  * @returns {Promise<object[]>}
  */
-export function parseFileToRows(file) {
+export const parseFileToRows = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -54,7 +54,7 @@ export function parseFileToRows(file) {
 /**
  * 从 File 对象解析纯文本（评论 CSV 等）
  */
-export function parseTextFile(file) {
+export const parseTextFile = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))

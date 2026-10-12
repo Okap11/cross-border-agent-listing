@@ -3,13 +3,17 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '../stores/product'
 import { useRagStore } from '../stores/rag'
-import { checkOllama } from '../api/ollama'
+import { useSettingsStore } from '../stores/settings'
+import { checkBackend } from '../api/llm'
 
 const router = useRouter()
 const productStore = useProductStore()
 const ragStore = useRagStore()
-const ollamaOnline = ref(false)
-const checkingOllama = ref(true)
+const settings = useSettingsStore()
+
+const backendOnline = ref(false)
+const checking = ref(true)
+const backendLabel = ref('')
 
 const features = [
   {
@@ -26,7 +30,7 @@ const features = [
   },
   {
     title: 'AI Listing 生成',
-    desc: '接入 Ollama 本地大模型，流式生成多平台文案',
+    desc: '接入 Ollama / 阿里百炼，流式生成多平台文案',
     route: '/ai-generate',
     icon: '🤖'
   },
@@ -39,27 +43,41 @@ const features = [
 ]
 
 onMounted(async () => {
-  await Promise.all([productStore.load(), ragStore.rebuild()])
-  ollamaOnline.value = await checkOllama()
-  checkingOllama.value = false
+  await Promise.all([productStore.load(), ragStore.rebuild(), settings.load()])
+  const cfg =
+    settings.llm.backend === 'dashscope'
+      ? {
+          backend: 'dashscope',
+          apiKey: settings.llm.dashscope.apiKey,
+          baseUrl: settings.llm.dashscope.baseUrl
+        }
+      : { backend: 'ollama' }
+  const result = await checkBackend(cfg)
+  backendOnline.value = result.online
+  backendLabel.value = settings.llm.backend === 'dashscope' ? '阿里云百炼' : 'Ollama'
+  checking.value = false
 })
 </script>
 
 <template>
   <div>
     <a-alert
-      v-if="!checkingOllama && !ollamaOnline"
+      v-if="!checking && !backendOnline"
       type="warning"
       show-icon
-      message="未检测到本地 Ollama 服务"
-      description="AI 相关功能需要先启动 Ollama 并拉取模型（如 qwen2:7b），详见 README。商品管理与字段映射不受影响。"
+      :message="`未检测到可用的 AI 后端（${backendLabel}）`"
+      description="AI 相关功能需要先在「模型设置」中配置并测试连接（Ollama 需本地启动；百炼需 API Key）。商品管理与字段映射不受影响。"
       style="margin-bottom: 16px"
-    />
+    >
+      <template #action>
+        <a-button size="small" @click="router.push('/settings')">前往模型设置</a-button>
+      </template>
+    </a-alert>
     <a-alert
-      v-else-if="!checkingOllama && ollamaOnline"
+      v-else-if="!checking && backendOnline"
       type="success"
       show-icon
-      message="Ollama 服务已就绪"
+      :message="`AI 后端已就绪（${backendLabel}）`"
       style="margin-bottom: 16px"
     />
 
@@ -104,7 +122,7 @@ onMounted(async () => {
         跨境 Listing 智能工作台。所有数据默认保存在浏览器本地，敏感商品信息不上传任何第三方服务器。
       </p>
       <p>
-        技术栈：Vue 3 · Vite · Ant Design Vue · Pinia · IndexedDB(localforage) · Ollama · 本地向量检索
+        技术栈：Vue 3 · Vite · Ant Design Vue · Pinia · IndexedDB(localforage) · Ollama / 阿里百炼 · 本地向量检索
       </p>
     </a-card>
   </div>

@@ -2,10 +2,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { useProductStore } from '../stores/product'
-import { listOllamaModels, ollamaStream } from '../api/ollama'
+import { useSettingsStore } from '../stores/settings'
+import { listModels, streamGenerate } from '../api/llm'
 import { getPrompt } from '../utils/prompt'
 
 const store = useProductStore()
+const settings = useSettingsStore()
+
 const platform = ref('ozon')
 const model = ref('')
 const models = ref([])
@@ -19,23 +22,36 @@ const platformOptions = [
 ]
 
 const productOptions = computed(() =>
-  store.products.map((p) => ({ value: p.id, label: p.sku ? `${p.sku} - ${p.title}` : p.title }))
+  store.products.map((p) => ({ value: p.id, label: p.sku ? `${p.sku} - ${p.name}` : p.name }))
 )
 
-async function loadModels() {
+/** 当前生效的后端配置 */
+const backendCfg = () => {
+  return settings.llm.backend === 'dashscope'
+    ? {
+        backend: 'dashscope',
+        model: settings.llm.dashscope.model,
+        apiKey: settings.llm.dashscope.apiKey,
+        baseUrl: settings.llm.dashscope.baseUrl
+      }
+    : { backend: 'ollama', model: settings.llm.ollamaModel }
+}
+
+const loadModels = async () => {
+  model.value = settings.currentModel()
   try {
-    models.value = await listOllamaModels()
-    if (models.value.length && !model.value) model.value = models.value[0]
+    models.value = await listModels(backendCfg())
+    if (!model.value && models.value.length) model.value = models.value[0]
   } catch {
     models.value = []
-    message.warning('未能连接到 Ollama，请确认已启动（ollama serve）')
+    message.warning('未获取到模型，请先在「模型设置」中配置并测试连接')
   }
 }
 
-function buildProductInfo(product) {
+const buildProductInfo = (product) => {
   return [
     `SKU: ${product.sku || ''}`,
-    `标题: ${product.title || ''}`,
+    `标题: ${product.name || ''}`,
     `描述: ${product.description || ''}`,
     `类目: ${product.category || ''}`,
     `属性: ${product.attributes || ''}`,
@@ -43,7 +59,7 @@ function buildProductInfo(product) {
   ].join('\n')
 }
 
-async function generate() {
+const generate = async () => {
   if (!selectedProductId.value) {
     message.warning('请先选择一件商品')
     return
@@ -59,7 +75,8 @@ async function generate() {
   generating.value = true
   try {
     const prompt = getPrompt(platform.value, buildProductInfo(product))
-    await ollamaStream({
+    await streamGenerate({
+      ...backendCfg(),
       model: model.value,
       prompt,
       onChunk: (t) => {
@@ -74,13 +91,14 @@ async function generate() {
   }
 }
 
-function copyResult() {
+const copyResult = () => {
   navigator.clipboard?.writeText(output.value)
   message.success('已复制')
 }
 
 onMounted(async () => {
-  await Promise.all([store.load(), loadModels()])
+  await Promise.all([store.load(), settings.load()])
+  await loadModels()
 })
 </script>
 
@@ -105,8 +123,10 @@ onMounted(async () => {
           <a-select
             v-model:value="model"
             :options="models.map((m) => ({ value: m, label: m }))"
-            style="width: 180px"
-            placeholder="Ollama 模型"
+            style="width: 200px"
+            :placeholder="settings.llm.backend === 'dashscope' ? '百炼模型' : 'Ollama 模型'"
+            show-search
+            allow-clear
           />
         </a-form-item>
         <a-form-item>
@@ -115,6 +135,12 @@ onMounted(async () => {
           </a-button>
         </a-form-item>
       </a-form>
+      <a-space style="margin-top: 4px">
+        <a-tag :color="settings.llm.backend === 'dashscope' ? 'blue' : 'green'">
+          当前后端：{{ settings.llm.backend === 'dashscope' ? '阿里云百炼' : 'Ollama' }}
+        </a-tag>
+        <a @click="$router.push('/settings')">前往模型设置</a>
+      </a-space>
     </a-card>
 
     <a-card title="生成结果" style="margin-top: 16px">

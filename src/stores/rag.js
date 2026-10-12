@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { getAllComments, saveComments, clearComments } from '../utils/db'
 import { chunkText, buildIndex, search } from '../utils/vector'
 import { getRagPrompt } from '../utils/prompt'
-import { ollamaStream } from '../api/ollama'
+import { streamGenerate } from '../api/llm'
 
 export const useRagStore = defineStore('rag', {
   state: () => ({
@@ -56,9 +56,11 @@ export const useRagStore = defineStore('rag', {
     },
 
     /**
-     * 执行 RAG 问答：召回相关片段 -> 构造 prompt -> Ollama 流式生成
+     * 执行 RAG 问答：召回相关片段 -> 构造 prompt -> 统一后端流式生成
+     * @param {string} question
+     * @param {object} opts { cfg: 后端配置, onChunk }
      */
-    async ask(question, { model, onChunk }) {
+    async ask(question, { cfg, onChunk }) {
       if (!this.index || !this.chunks.length) {
         this.error = '请先导入竞品评论并建立索引'
         return
@@ -76,8 +78,8 @@ export const useRagStore = defineStore('rag', {
           .map((h, i) => `[片段${i + 1}] ${h.text}`)
           .join('\n---\n')
         const prompt = getRagPrompt(question, context)
-        await ollamaStream({
-          model,
+        await streamGenerate({
+          ...cfg,
           prompt,
           onChunk: (t) => {
             this.answer += t

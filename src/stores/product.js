@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import {
   getAllProducts,
   saveProduct,
+  saveProducts,
   deleteProduct
 } from '../utils/db'
 
@@ -27,6 +28,11 @@ export const useProductStore = defineStore('product', {
     },
     async add(product) {
       const saved = await saveProduct(product)
+      await this.load()
+      return saved
+    },
+    async batchAdd(products) {
+      const saved = await saveProducts(products)
       await this.load()
       return saved
     },

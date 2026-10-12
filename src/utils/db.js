@@ -22,17 +22,19 @@ export const generationStore = localforage.createInstance({
 })
 
 /** 商品 CRUD */
-export async function getAllProducts() {
+export const getAllProducts = async () => {
   const list = []
-  await productStore.iterate((value) => list.push(value))
+  await productStore.iterate((value) => {
+    list.push(value)
+  })
   return list
 }
 
-export async function getProduct(id) {
+export const getProduct = async (id) => {
   return productStore.getItem(String(id))
 }
 
-export async function saveProduct(product) {
+export const saveProduct = async (product) => {
   if (!product.id) {
     product.id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   }
@@ -41,18 +43,34 @@ export async function saveProduct(product) {
   return product
 }
 
-export async function deleteProduct(id) {
+/** 批量保存商品（一次写入多条，避免逐条触发读库） */
+export const saveProducts = async (items) => {
+  const now = Date.now()
+  const saved = []
+  for (const item of items) {
+    const p = { ...item }
+    if (!p.id) p.id = `${now}_${Math.random().toString(36).slice(2, 8)}`
+    p.updatedAt = now
+    await productStore.setItem(String(p.id), p)
+    saved.push(p)
+  }
+  return saved
+}
+
+export const deleteProduct = async (id) => {
   await productStore.removeItem(String(id))
 }
 
 /** 评论（竞品）CRUD */
-export async function getAllComments() {
+export const getAllComments = async () => {
   const list = []
-  await commentStore.iterate((value) => list.push(value))
+  await commentStore.iterate((value) => {
+    list.push(value)
+  })
   return list
 }
 
-export async function saveComments(items) {
+export const saveComments = async (items) => {
   const now = Date.now()
   for (const item of items) {
     if (!item.id) item.id = `${now}_${Math.random().toString(36).slice(2, 8)}`
@@ -62,11 +80,11 @@ export async function saveComments(items) {
   return items
 }
 
-export async function clearComments() {
+export const clearComments = async () => {
   await commentStore.clear()
 }
 
 /** AI 生成历史 */
-export async function saveGeneration(record) {
+export const saveGeneration = async (record) => {
   await generationStore.setItem(String(record.id || Date.now()), record)
 }

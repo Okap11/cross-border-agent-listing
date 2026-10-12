@@ -15,7 +15,7 @@ const OLLAMA_BASE = '/ollama'
  * @param {Function} options.onDone 结束回调 (fullText)
  * @param {object} [options.extra] 其他参数（temperature 等）
  */
-export async function ollamaStream({ model, prompt, onChunk, onDone, extra = {} }) {
+export const ollamaStream = async ({ model, prompt, onChunk, onDone, extra = {} }) => {
   const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -58,7 +58,7 @@ export async function ollamaStream({ model, prompt, onChunk, onDone, extra = {} 
 /**
  * 非流式生成（一次返回完整结果）
  */
-export async function ollamaGenerate({ model, prompt, extra = {} }) {
+export const ollamaGenerate = async ({ model, prompt, extra = {} }) => {
   const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -75,7 +75,7 @@ export async function ollamaGenerate({ model, prompt, extra = {} }) {
 /**
  * 列出本机已安装的模型（用于下拉选择）
  */
-export async function listOllamaModels() {
+export const listOllamaModels = async () => {
   const res = await fetch(`${OLLAMA_BASE}/api/tags`)
   if (!res.ok) throw new Error(`获取模型列表失败 (${res.status})`)
   const json = await res.json()
@@ -85,7 +85,7 @@ export async function listOllamaModels() {
 /**
  * 健康检查：Ollama 是否已启动
  */
-export async function checkOllama() {
+export const checkOllama = async () => {
   try {
     const res = await fetch(`${OLLAMA_BASE}/api/tags`, { method: 'GET' })
     return res.ok

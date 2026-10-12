@@ -30,7 +30,7 @@ const previewColumns = computed(() =>
   }))
 )
 
-function doExport() {
+const doExport = () => {
   if (!mappedRows.value.length) {
     message.warning('暂无可导出的商品，请先在「商品管理」录入')
     return

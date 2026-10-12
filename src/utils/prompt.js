@@ -54,7 +54,7 @@ export const promptTemplates = {
  * @param {string} tplKey  'ozon' | 'shein'
  * @param {string} productInfo 序列化后的产品信息
  */
-export function getPrompt(tplKey, productInfo) {
+export const getPrompt = (tplKey, productInfo) => {
   const tpl = promptTemplates[tplKey]
   if (!tpl) throw new Error(`未知的模板: ${tplKey}`)
   return tpl.replace('{{productInfo}}', productInfo)
@@ -63,7 +63,7 @@ export function getPrompt(tplKey, productInfo) {
 /**
  * 竞品评论分析专用 prompt（RAG 召回片段 + 用户问题）
  */
-export function getRagPrompt(question, contextChunks) {
+export const getRagPrompt = (question, contextChunks) => {
   return `你是跨境电商选品与竞品分析专家。请基于以下从竞品评论中检索到的相关片段，回答用户的问题。
 要求：
 1. 只依据提供的片段回答，不要编造片段中没有的信息。

@@ -14,11 +14,17 @@ export default defineConfig({
   server: {
     port: 5173,
     // 将 /ollama 代理到本地 Ollama 服务，规避浏览器 CORS
+    // 将 /dashscope 代理到阿里云百炼，规避浏览器 CORS（仅 dev；生产需同源代理）
     proxy: {
       '/ollama': {
         target: 'http://127.0.0.1:11434',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/ollama/, '')
+      },
+      '/dashscope': {
+        target: 'https://dashscope.aliyuncs.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/dashscope/, '')
       }
     }
   },

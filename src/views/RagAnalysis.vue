@@ -2,25 +2,40 @@
 import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { useRagStore } from '../stores/rag'
-import { listOllamaModels } from '../api/ollama'
+import { useSettingsStore } from '../stores/settings'
+import { listModels } from '../api/llm'
 import { parseTextFile } from '../utils/excel'
 
 const store = useRagStore()
+const settings = useSettingsStore()
 const question = ref('')
 const model = ref('')
 const models = ref([])
 
-async function loadModels() {
+/** 当前生效的后端配置 */
+const backendCfg = () => {
+  return settings.llm.backend === 'dashscope'
+    ? {
+        backend: 'dashscope',
+        model: settings.llm.dashscope.model,
+        apiKey: settings.llm.dashscope.apiKey,
+        baseUrl: settings.llm.dashscope.baseUrl
+      }
+    : { backend: 'ollama', model: settings.llm.ollamaModel }
+}
+
+const loadModels = async () => {
+  model.value = settings.currentModel()
   try {
-    models.value = await listOllamaModels()
-    if (models.value.length && !model.value) model.value = models.value[0]
+    models.value = await listModels(backendCfg())
+    if (!model.value && models.value.length) model.value = models.value[0]
   } catch {
     models.value = []
-    message.warning('未能连接到 Ollama，问答需要本地模型')
+    message.warning('未获取到模型，请先在「模型设置」中配置并测试连接')
   }
 }
 
-async function handleUpload({ file }) {
+const handleUpload = async ({ file }) => {
   const isTxt = file.type === 'text/plain' || /\.(txt|csv)$/i.test(file.name)
   if (!isTxt) {
     message.error('请上传 .txt 或 .csv 文件')
@@ -36,7 +51,7 @@ async function handleUpload({ file }) {
   return false
 }
 
-async function ask() {
+const ask = async () => {
   if (!question.value.trim()) {
     message.warning('请输入要分析的问题')
     return
@@ -45,16 +60,17 @@ async function ask() {
     message.warning('请选择模型')
     return
   }
-  await store.ask(question.value, { model: model.value })
+  await store.ask(question.value, { cfg: backendCfg() })
 }
 
-async function clearAll() {
+const clearAll = async () => {
   await store.clearAll()
   message.success('已清空评论数据')
 }
 
 onMounted(async () => {
   await store.rebuild()
+  await settings.load()
   await loadModels()
 })
 </script>
@@ -70,6 +86,9 @@ onMounted(async () => {
           <a-button danger>清空数据</a-button>
         </a-popconfirm>
         <span style="color: #888">已建立 {{ store.indexedCount }} 个检索片段（本地索引，数据不出浏览器）</span>
+        <a-tag :color="settings.llm.backend === 'dashscope' ? 'blue' : 'green'">
+          {{ settings.llm.backend === 'dashscope' ? '阿里云百炼' : 'Ollama' }}
+        </a-tag>
       </a-space>
     </a-card>
 
@@ -84,8 +103,10 @@ onMounted(async () => {
         <a-select
           v-model:value="model"
           :options="models.map((m) => ({ value: m, label: m }))"
-          style="width: 180px"
+          style="width: 200px"
           placeholder="模型"
+          show-search
+          allow-clear
         />
         <a-button type="primary" :loading="store.answering" @click="ask">
           {{ store.answering ? '分析中...' : '开始分析' }}
@@ -95,10 +116,7 @@ onMounted(async () => {
       <div style="margin-top: 16px">
         <a-skeleton v-if="store.answering && !store.answer" active />
         <pre v-else-if="store.answer" class="answer-box">{{ store.answer }}</pre>
-        <a-empty
-          v-else
-          description="上传评论并提问后，将基于本地召回片段由 Ollama 生成分析结论"
-        />
+        <a-empty v-else description="上传评论并提问后，将基于本地召回片段生成分析结论" />
       </div>
       <a-alert
         v-if="store.error"

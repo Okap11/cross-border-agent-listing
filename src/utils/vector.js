@@ -7,7 +7,7 @@
  */
 
 // 中文/英文/数字分词
-function tokenize(text) {
+const tokenize = (text) => {
   const normalized = String(text || '').toLowerCase()
   // 英文单词 + 数字
   const en = normalized.match(/[a-z0-9]+/g) || []
@@ -21,7 +21,7 @@ function tokenize(text) {
 }
 
 /** 文本分片：按句号/换行切分，合并短片段 */
-export function chunkText(text, maxLen = 200) {
+export const chunkText = (text, maxLen = 200) => {
   const sentences = String(text || '')
     .split(/[。！？!?\n；;]/)
     .map((s) => s.trim())
@@ -46,7 +46,7 @@ export function chunkText(text, maxLen = 200) {
  * @param {object[]} docs  [{ id, text }]
  * @returns {{ df: Map, postings: Map, docTokens: Map, docCount: number }}
  */
-export function buildIndex(docs) {
+export const buildIndex = (docs) => {
   const df = new Map() // 词 -> 包含文档数
   const postings = new Map() // 词 -> Map<docId, tf>
   const docTokens = new Map() // docId -> 词频Map
@@ -68,7 +68,7 @@ export function buildIndex(docs) {
 }
 
 /** 余弦相似度（TF-IDF 加权） */
-function cosine(queryTf, docTf, df, docCount) {
+const cosine = (queryTf, docTf, df, docCount) => {
   const idf = (term) => Math.log(1 + docCount / (1 + (df.get(term) || 0)))
   let dot = 0
   let qNorm = 0
@@ -95,7 +95,7 @@ function cosine(queryTf, docTf, df, docCount) {
  * @param {number} topK
  * @returns {Array<{id, text, score}>}
  */
-export function search(index, docs, query, topK = 5) {
+export const search = (index, docs, query, topK = 5) => {
   const qTf = tokenize(query).reduce((m, t) => m.set(t, (m.get(t) || 0) + 1), new Map())
   const scored = docs.map((doc) => {
     const docTf = index.docTokens.get(doc.id)

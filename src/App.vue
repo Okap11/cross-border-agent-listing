@@ -1,23 +1,30 @@
 <script setup>
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useSettingsStore } from './stores/settings'
 import {
   DashboardOutlined,
   ShoppingOutlined,
   SwapOutlined,
   RobotOutlined,
-  BarChartOutlined
+  BarChartOutlined,
+  SettingOutlined
 } from '@ant-design/icons-vue'
 
 const route = useRoute()
 const selectedKeys = ref([route.path])
+
+// 应用启动即恢复本地 LLM 配置，保证刷新后各页面读取到已保存的后端设置
+const settings = useSettingsStore()
+settings.load()
 
 const menuItems = [
   { key: '/', icon: DashboardOutlined, title: '工作台' },
   { key: '/product', icon: ShoppingOutlined, title: '商品管理' },
   { key: '/mapping', icon: SwapOutlined, title: '字段映射' },
   { key: '/ai-generate', icon: RobotOutlined, title: 'AI Listing 生成' },
-  { key: '/rag', icon: BarChartOutlined, title: '竞品评论分析' }
+  { key: '/rag', icon: BarChartOutlined, title: '竞品评论分析' },
+  { key: '/settings', icon: SettingOutlined, title: '模型设置' }
 ]
 </script>
 

@@ -30,6 +30,12 @@ const routes = [
     name: 'RagAnalysis',
     component: () => import('../views/RagAnalysis.vue'),
     meta: { title: '竞品评论分析', icon: 'BarChartOutlined' }
+  },
+  {
+    path: '/settings',
+    name: 'ModelSettings',
+    component: () => import('../views/ModelSettings.vue'),
+    meta: { title: '模型设置', icon: 'SettingOutlined' }
   }
 ]
 
