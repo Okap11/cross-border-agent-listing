@@ -3,12 +3,31 @@ import { getAllComments, saveComments, clearComments } from '../utils/db'
 import { chunkText, buildIndex, search } from '../utils/vector'
 import { getRagPrompt } from '../utils/prompt'
 import { streamGenerate } from '../api/llm'
+import type { CommentRecord } from '../types/storage'
+import type { StreamGenerateParams } from '../types/llm'
+
+/** 分片后的文档片段 */
+interface RagChunk {
+  id: string
+  text: string
+}
+
+/** 倒排索引的形态跟随 utils/vector 的 buildIndex 返回值 */
+type RagIndex = ReturnType<typeof buildIndex>
 
 export const useRagStore = defineStore('rag', {
-  state: () => ({
-    comments: [], // 原始评论
-    chunks: [], // 分片后的文档 [{id, text}]
-    index: null, // 倒排索引
+  state: (): {
+    comments: CommentRecord[] // 原始评论
+    chunks: RagChunk[] // 分片后的文档 [{id, text}]
+    index: RagIndex | null // 倒排索引
+    indexedCount: number
+    answer: string
+    answering: boolean
+    error: string | null
+  } => ({
+    comments: [],
+    chunks: [],
+    index: null,
     indexedCount: 0,
     answer: '',
     answering: false,
@@ -16,7 +35,7 @@ export const useRagStore = defineStore('rag', {
   }),
   actions: {
     /** 导入评论文本并入库、分片、建索引 */
-    async importComments(rawText) {
+    async importComments(rawText: string): Promise<number> {
       this.error = null
       // 按行拆分评论
       const lines = String(rawText || '')
@@ -35,7 +54,7 @@ export const useRagStore = defineStore('rag', {
 
     /** 从本地库重建分片与索引 */
     async rebuild() {
-      this.comments = await getAllComments()
+      this.comments = (await getAllComments()) as CommentRecord[]
       this.chunks = []
       let seq = 0
       for (const c of this.comments) {
@@ -57,10 +76,11 @@ export const useRagStore = defineStore('rag', {
 
     /**
      * 执行 RAG 问答：召回相关片段 -> 构造 prompt -> 统一后端流式生成
-     * @param {string} question
-     * @param {object} opts { cfg: 后端配置, onChunk }
      */
-    async ask(question, { cfg, onChunk }) {
+    async ask(
+      question: string,
+      { cfg, onChunk }: { cfg: StreamGenerateParams; onChunk?: (text: string) => void }
+    ) {
       if (!this.index || !this.chunks.length) {
         this.error = '请先导入竞品评论并建立索引'
         return
@@ -88,7 +108,7 @@ export const useRagStore = defineStore('rag', {
           onDone: () => {}
         })
       } catch (e) {
-        this.error = e.message
+        this.error = e instanceof Error ? e.message : String(e)
       } finally {
         this.answering = false
       }

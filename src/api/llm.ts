@@ -9,49 +9,49 @@
 
 import { ollamaStream, listOllamaModels, checkOllama } from './ollama'
 import { dashscopeStream, listDashscopeModels, checkDashscope } from './dashscope'
+import type { StreamGenerateParams, ModelList, CheckBackendResult, LLMBackend } from '../types/llm'
+
+/** listModels / checkBackend 共用的最小配置入参 */
+interface BackendCfg {
+  backend: LLMBackend
+  apiKey?: string
+  baseUrl?: string
+  model?: string
+}
 
 /**
  * 统一流式生成
- * @param {object} cfg 当前 LLM 配置
- * @param {string} cfg.backend 'ollama' | 'dashscope'
- * @param {string} [cfg.model]
- * @param {string} [cfg.apiKey]    百炼 API Key
- * @param {string} [cfg.baseUrl]   百炼 Base URL
- * @param {string} prompt
- * @param {Function} onChunk
- * @param {Function} onDone
  */
-export const streamGenerate = async ({ backend, model, apiKey, baseUrl, prompt, onChunk, onDone }) => {
+export const streamGenerate = async ({ backend, model, apiKey, baseUrl, prompt, onChunk, onDone }: StreamGenerateParams): Promise<void> => {
   if (backend === 'dashscope') {
     return dashscopeStream({
-      apiKey,
+      apiKey: apiKey || '',
       baseUrl,
-      model,
+      model: model || '',
       messages: [{ role: 'user', content: prompt }],
       onChunk,
       onDone
     })
   }
-  return ollamaStream({ model, prompt, onChunk, onDone })
+  return ollamaStream({ model: model || '', prompt, onChunk, onDone })
 }
 
 /**
  * 获取当前后端可用模型列表
  */
-export const listModels = async (cfg) => {
+export const listModels = async (cfg: BackendCfg): Promise<ModelList> => {
   if (cfg.backend === 'dashscope') {
-    return listDashscopeModels({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl })
+    return listDashscopeModels({ apiKey: cfg.apiKey || '', baseUrl: cfg.baseUrl })
   }
   return listOllamaModels()
 }
 
 /**
  * 后端健康检查
- * @returns {Promise<{ok: boolean, backend: string, online: boolean}>}
  */
-export const checkBackend = async (cfg) => {
+export const checkBackend = async (cfg: BackendCfg): Promise<CheckBackendResult> => {
   if (cfg.backend === 'dashscope') {
-    const online = await checkDashscope({ apiKey: cfg.apiKey, baseUrl: cfg.baseUrl })
+    const online = await checkDashscope({ apiKey: cfg.apiKey || '', baseUrl: cfg.baseUrl })
     return { ok: online, backend: 'dashscope', online }
   }
   const online = await checkOllama()

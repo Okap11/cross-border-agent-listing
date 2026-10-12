@@ -1,12 +1,21 @@
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useSettingsStore } from '../stores/settings'
 import { listModels, checkBackend } from '../api/llm'
+import type { LLMBackend } from '../types/llm'
 
 const store = useSettingsStore()
 
-const form = reactive({
+interface SettingsForm {
+  backend: LLMBackend
+  ollamaModel: string
+  dashscopeApiKey: string
+  dashscopeModel: string
+  dashscopeBaseUrl: string
+}
+
+const form = reactive<SettingsForm>({
   backend: 'dashscope',
   ollamaModel: '',
   dashscopeApiKey: '',
@@ -14,8 +23,8 @@ const form = reactive({
   dashscopeBaseUrl: 'https://dashscope.aliyuncs.com'
 })
 
-const dashscopeModels = ref([])
-const ollamaModels = ref([])
+const dashscopeModels = ref<string[]>([])
+const ollamaModels = ref<string[]>([])
 const checking = ref(false)
 const backendOnline = ref(false)
 const checked = ref(false)
@@ -80,13 +89,13 @@ const testConnection = async () => {
   } catch (e) {
     checked.value = true
     backendOnline.value = false
-    message.error('连接失败：' + e.message)
+    message.error('连接失败：' + (e instanceof Error ? e.message : String(e)))
   } finally {
     checking.value = false
   }
 }
 
-const backendCfg = () => {
+const backendCfg = (): { backend: LLMBackend; model: string; apiKey?: string; baseUrl?: string } => {
   return form.backend === 'dashscope'
     ? {
         backend: 'dashscope',
@@ -104,7 +113,7 @@ const save = async () => {
 }
 
 // 表单变更后自动持久化（300ms 防抖），刷新后仍保持选择，无需手动点保存
-let saveTimer = null
+let saveTimer: ReturnType<typeof setTimeout> | undefined = undefined
 watch(
   form,
   () => {
@@ -130,7 +139,7 @@ const loadDashscopeModels = async () => {
     else message.info('未获取到模型，可直接手动输入模型名')
   } catch (e) {
     dashscopeModels.value = []
-    message.error('获取模型失败：' + e.message)
+    message.error('获取模型失败：' + (e instanceof Error ? e.message : String(e)))
   }
 }
 

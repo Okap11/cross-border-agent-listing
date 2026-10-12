@@ -1,10 +1,11 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '../stores/product'
 import { useRagStore } from '../stores/rag'
 import { useSettingsStore } from '../stores/settings'
 import { checkBackend } from '../api/llm'
+import type { LLMBackend } from '../types/llm'
 
 const router = useRouter()
 const productStore = useProductStore()
@@ -44,7 +45,7 @@ const features = [
 
 onMounted(async () => {
   await Promise.all([productStore.load(), ragStore.rebuild(), settings.load()])
-  const cfg =
+  const cfg: { backend: LLMBackend; apiKey?: string; baseUrl?: string } =
     settings.llm.backend === 'dashscope'
       ? {
           backend: 'dashscope',

@@ -1,0 +1,57 @@
+﻿=== log ===
+396d026 refactor: ts重构
+71bebdc refactor: 项目重构为ts
+f30f83f feat: 提供阿里百炼大模型接入，优化商品管理字段以及列表配置
+7c75b45 chore: 触发 GitHub Pages 首次部署
+bad6730 chore: 配置 GitHub Pages 自动部署
+fe8c5c1 feat: 初始化 cross-border-agent-listing 项目
+=== ls-files count ===
+49
+=== ls-files sample ===
+.github/workflows/deploy.yml
+.gitignore
+.prettierrc.json
+.vscode/extensions.json
+README.md
+docs/roadmap.md
+eslint.config.js
+index.html
+package-lock.json
+package.json
+public/favicon.svg
+public/icons.svg
+sample-data/shein-top-reviews-import.txt
+sample-data/shein-top-reviews.csv
+src/App.vue
+src/api/dashscope.ts
+src/api/llm.ts
+src/api/ollama.ts
+src/assets/vite.svg
+src/constants/fields.ts
+src/constants/llm.ts
+src/constants/platforms.ts
+src/constants/storage.ts
+src/env.d.ts
+src/main.ts
+=== status to file ===
+
+ M src/api/dashscope.ts
+ M src/api/llm.ts
+ M src/api/ollama.ts
+ D src/stores/product.js
+ D src/stores/rag.js
+ D src/stores/settings.js
+ M src/utils/db.ts
+ M src/utils/excel.ts
+ M src/utils/prompt.ts
+ M src/utils/vector.ts
+ M src/views/AiGenerate.vue
+ M src/views/FieldMapping.vue
+ M src/views/Home.vue
+ M src/views/ModelSettings.vue
+ M src/views/ProductEdit.vue
+ M src/views/RagAnalysis.vue
+?? _gitcheck.txt
+?? src/stores/product.ts
+?? src/stores/rag.ts
+?? src/stores/settings.ts

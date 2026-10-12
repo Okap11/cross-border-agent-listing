@@ -1,19 +1,20 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, Space } from 'ant-design-vue'
 import { useRagStore } from '../stores/rag'
 import { useSettingsStore } from '../stores/settings'
 import { listModels } from '../api/llm'
 import { parseTextFile } from '../utils/excel'
+import type { LLMBackend, StreamGenerateParams } from '../types/llm'
 
 const store = useRagStore()
 const settings = useSettingsStore()
 const question = ref('')
 const model = ref('')
-const models = ref([])
+const models = ref<string[]>([])
 
 /** 当前生效的后端配置 */
-const backendCfg = () => {
+const backendCfg = (): { backend: LLMBackend; model: string; apiKey?: string; baseUrl?: string } => {
   return settings.llm.backend === 'dashscope'
     ? {
         backend: 'dashscope',
@@ -35,7 +36,7 @@ const loadModels = async () => {
   }
 }
 
-const handleUpload = async ({ file }) => {
+const handleUpload = async ({ file }: { file: File }) => {
   const isTxt = file.type === 'text/plain' || /\.(txt|csv)$/i.test(file.name)
   if (!isTxt) {
     message.error('请上传 .txt 或 .csv 文件')
@@ -46,7 +47,7 @@ const handleUpload = async ({ file }) => {
     const count = await store.importComments(text)
     message.success(`已导入 ${count} 条评论，建立 ${store.indexedCount} 个检索片段`)
   } catch (e) {
-    message.error('导入失败：' + e.message)
+    message.error('导入失败：' + (e instanceof Error ? e.message : String(e)))
   }
   return false
 }
@@ -60,7 +61,8 @@ const ask = async () => {
     message.warning('请选择模型')
     return
   }
-  await store.ask(question.value, { cfg: backendCfg() })
+  // store.ask 的 cfg 形参类型含 prompt，内部会用真实 prompt 覆盖，此处传入运行时配置即可
+  await store.ask(question.value, { cfg: backendCfg() as StreamGenerateParams })
 }
 
 const clearAll = async () => {
@@ -93,7 +95,7 @@ onMounted(async () => {
     </a-card>
 
     <a-card title="RAG 竞品分析问答" style="margin-top: 16px">
-      <a-space.Compact style="width: 100%; display: flex">
+      <Space.Compact style="width: 100%; display: flex">
         <a-input
           v-model:value="question"
           placeholder="例如：这个产品的主要差评是什么？爆款卖点有哪些？"
@@ -111,7 +113,7 @@ onMounted(async () => {
         <a-button type="primary" :loading="store.answering" @click="ask">
           {{ store.answering ? '分析中...' : '开始分析' }}
         </a-button>
-      </a-space.Compact>
+      </Space.Compact>
 
       <div style="margin-top: 16px">
         <a-skeleton v-if="store.answering && !store.answer" active />

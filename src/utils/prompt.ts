@@ -3,7 +3,9 @@
  * 面向 Ozon（俄语为主）与 Shein Choice（英文为主）
  */
 
-export const promptTemplates = {
+import type { PlatformKey } from '../types/platform'
+
+export const promptTemplates: Record<PlatformKey, string> = {
   ozon: `你是资深 Ozon 跨境运营专家。请根据下面的产品信息，生成 Ozon 平台的商品上架文案。
 要求：
 1. 标题使用俄语，符合 Ozon 搜索规则，核心关键词前置，控制长度在 150 字符内。
@@ -51,10 +53,10 @@ export const promptTemplates = {
 
 /**
  * 根据模板生成最终 prompt
- * @param {string} tplKey  'ozon' | 'shein'
- * @param {string} productInfo 序列化后的产品信息
+ * @param tplKey  'ozon' | 'shein'
+ * @param productInfo 序列化后的产品信息
  */
-export const getPrompt = (tplKey, productInfo) => {
+export const getPrompt = (tplKey: PlatformKey, productInfo: string): string => {
   const tpl = promptTemplates[tplKey]
   if (!tpl) throw new Error(`未知的模板: ${tplKey}`)
   return tpl.replace('{{productInfo}}', productInfo)
@@ -63,7 +65,7 @@ export const getPrompt = (tplKey, productInfo) => {
 /**
  * 竞品评论分析专用 prompt（RAG 召回片段 + 用户问题）
  */
-export const getRagPrompt = (question, contextChunks) => {
+export const getRagPrompt = (question: string, contextChunks: string): string => {
   return `你是跨境电商选品与竞品分析专家。请基于以下从竞品评论中检索到的相关片段，回答用户的问题。
 要求：
 1. 只依据提供的片段回答，不要编造片段中没有的信息。

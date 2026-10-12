@@ -1,14 +1,16 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { useProductStore } from '../stores/product'
-import { platformSchema, mapToPlatform } from '../utils/field-map'
+import { platformSchema } from '../constants/platforms'
+import { mapToPlatform } from '../utils/field-map'
 import { exportCsv } from '../utils/excel'
+import type { PlatformKey } from '../types/platform'
 
 const store = useProductStore()
-const platform = ref('ozon')
+const platform = ref<PlatformKey>('ozon')
 
-const platformOptions = [
+const platformOptions: { value: PlatformKey; label: string }[] = [
   { value: 'ozon', label: 'Ozon' },
   { value: 'shein', label: 'Shein Choice' }
 ]

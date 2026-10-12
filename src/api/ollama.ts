@@ -4,19 +4,29 @@
  * 从而规避浏览器跨域限制。生产部署时需在后端/网关配置同源代理。
  */
 
-const OLLAMA_BASE = '/ollama'
+import { OLLAMA_BASE_PATH } from '../constants/llm'
+
+/** 流式生成入参 */
+interface OllamaStreamParams {
+  model: string
+  prompt: string
+  onChunk?: (text: string) => void
+  onDone?: (fullText: string) => void
+  extra?: Record<string, unknown>
+}
+
+/** 非流式生成入参 */
+interface OllamaGenerateParams {
+  model: string
+  prompt: string
+  extra?: Record<string, unknown>
+}
 
 /**
  * 流式生成（对应 POST /api/generate，stream=true）
- * @param {object} options
- * @param {string} options.model 模型名，如 qwen2:7b
- * @param {string} options.prompt 提示词
- * @param {Function} options.onChunk 每段文本回调 (text)
- * @param {Function} options.onDone 结束回调 (fullText)
- * @param {object} [options.extra] 其他参数（temperature 等）
  */
-export const ollamaStream = async ({ model, prompt, onChunk, onDone, extra = {} }) => {
-  const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
+export const ollamaStream = async ({ model, prompt, onChunk, onDone, extra = {} }: OllamaStreamParams): Promise<void> => {
+  const res = await fetch(`${OLLAMA_BASE_PATH}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, prompt, stream: true, ...extra })
@@ -25,7 +35,7 @@ export const ollamaStream = async ({ model, prompt, onChunk, onDone, extra = {} 
     const errText = await res.text().catch(() => '')
     throw new Error(`Ollama 请求失败 (${res.status}): ${errText}`)
   }
-  const reader = res.body.getReader()
+  const reader = res.body!.getReader()
   const decoder = new TextDecoder()
   let fullText = ''
   let buffer = ''
@@ -34,12 +44,12 @@ export const ollamaStream = async ({ model, prompt, onChunk, onDone, extra = {} 
     if (done) break
     buffer += decoder.decode(value, { stream: true })
     const lines = buffer.split('\n')
-    buffer = lines.pop()
+    buffer = lines.pop()!
     for (const line of lines) {
       const trimmed = line.trim()
       if (!trimmed) continue
       try {
-        const json = JSON.parse(trimmed)
+        const json = JSON.parse(trimmed) as { response?: string; done?: boolean }
         if (json.response) {
           fullText += json.response
           onChunk?.(json.response)
@@ -58,8 +68,8 @@ export const ollamaStream = async ({ model, prompt, onChunk, onDone, extra = {} 
 /**
  * 非流式生成（一次返回完整结果）
  */
-export const ollamaGenerate = async ({ model, prompt, extra = {} }) => {
-  const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
+export const ollamaGenerate = async ({ model, prompt, extra = {} }: OllamaGenerateParams): Promise<string> => {
+  const res = await fetch(`${OLLAMA_BASE_PATH}/api/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, prompt, stream: false, ...extra })
@@ -68,26 +78,26 @@ export const ollamaGenerate = async ({ model, prompt, extra = {} }) => {
     const errText = await res.text().catch(() => '')
     throw new Error(`Ollama 请求失败 (${res.status}): ${errText}`)
   }
-  const json = await res.json()
+  const json = await res.json() as { response?: string }
   return json.response || ''
 }
 
 /**
  * 列出本机已安装的模型（用于下拉选择）
  */
-export const listOllamaModels = async () => {
-  const res = await fetch(`${OLLAMA_BASE}/api/tags`)
+export const listOllamaModels = async (): Promise<string[]> => {
+  const res = await fetch(`${OLLAMA_BASE_PATH}/api/tags`)
   if (!res.ok) throw new Error(`获取模型列表失败 (${res.status})`)
-  const json = await res.json()
-  return (json.models || []).map((m) => m.name)
+  const json = await res.json() as { models?: Array<{ name?: string }> }
+  return (json.models || []).map((m) => m.name) as string[]
 }
 
 /**
  * 健康检查：Ollama 是否已启动
  */
-export const checkOllama = async () => {
+export const checkOllama = async (): Promise<boolean> => {
   try {
-    const res = await fetch(`${OLLAMA_BASE}/api/tags`, { method: 'GET' })
+    const res = await fetch(`${OLLAMA_BASE_PATH}/api/tags`, { method: 'GET' })
     return res.ok
   } catch {
     return false

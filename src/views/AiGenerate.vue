@@ -1,22 +1,25 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { useProductStore } from '../stores/product'
 import { useSettingsStore } from '../stores/settings'
 import { listModels, streamGenerate } from '../api/llm'
 import { getPrompt } from '../utils/prompt'
+import type { Product } from '../types/product'
+import type { PlatformKey } from '../types/platform'
+import type { LLMBackend } from '../types/llm'
 
 const store = useProductStore()
 const settings = useSettingsStore()
 
-const platform = ref('ozon')
-const model = ref('')
-const models = ref([])
-const selectedProductId = ref(null)
+const platform = ref<PlatformKey>('ozon')
+const model = ref<string>('')
+const models = ref<string[]>([])
+const selectedProductId = ref<string | null>(null)
 const output = ref('')
 const generating = ref(false)
 
-const platformOptions = [
+const platformOptions: { value: PlatformKey; label: string }[] = [
   { value: 'ozon', label: 'Ozon（俄语）' },
   { value: 'shein', label: 'Shein Choice（英语）' }
 ]
@@ -26,7 +29,7 @@ const productOptions = computed(() =>
 )
 
 /** 当前生效的后端配置 */
-const backendCfg = () => {
+const backendCfg = (): { backend: LLMBackend; model: string; apiKey?: string; baseUrl?: string } => {
   return settings.llm.backend === 'dashscope'
     ? {
         backend: 'dashscope',
@@ -48,7 +51,7 @@ const loadModels = async () => {
   }
 }
 
-const buildProductInfo = (product) => {
+const buildProductInfo = (product: Product): string => {
   return [
     `SKU: ${product.sku || ''}`,
     `标题: ${product.name || ''}`,
@@ -79,13 +82,13 @@ const generate = async () => {
       ...backendCfg(),
       model: model.value,
       prompt,
-      onChunk: (t) => {
+      onChunk: (t: string) => {
         output.value += t
       },
       onDone: () => message.success('生成完成')
     })
   } catch (e) {
-    message.error(e.message || '生成失败')
+    message.error((e instanceof Error ? e.message : String(e)) || '生成失败')
   } finally {
     generating.value = false
   }

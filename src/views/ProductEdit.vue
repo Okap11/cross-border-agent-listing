@@ -1,17 +1,18 @@
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { useProductStore } from '../stores/product'
-import { sourceFields, fieldGroups } from '../utils/field-map'
+import { sourceFields, fieldGroups } from '../constants/fields'
 import { parseFileToRows, parseTextFile, exportSheet } from '../utils/excel'
+import type { Product } from '../types/product'
 
 const store = useProductStore()
 
 const modalOpen = ref(false)
-const editing = ref(null) // 正在编辑的商品对象
-const form = reactive({})
+const editing = ref<Product | null>(null) // 正在编辑的商品对象
+const form = reactive<Record<string, string | number>>({})
 const submitting = ref(false)
-const fileInput = ref(null)
+const fileInput = ref<HTMLInputElement | null>(null)
 
 // 按分组返回字段列表
 const groupedFields = fieldGroups.map((group) => ({
@@ -20,7 +21,7 @@ const groupedFields = fieldGroups.map((group) => ({
 }))
 
 // 表头（字段 label 或 key）→ 字段 key 的映射
-const headerKeyMap = {}
+const headerKeyMap: Record<string, string> = {}
 for (const f of sourceFields) {
   headerKeyMap[f.key] = f.key
   headerKeyMap[f.label] = f.key
@@ -39,7 +40,7 @@ const openCreate = () => {
   modalOpen.value = true
 }
 
-const openEdit = (record) => {
+const openEdit = (record: Product) => {
   editing.value = record
   for (const f of sourceFields) {
     form[f.key] = record[f.key] ?? ''
@@ -59,13 +60,13 @@ const submit = async () => {
     }
     modalOpen.value = false
   } catch (e) {
-    message.error(e.message || '保存失败')
+    message.error((e instanceof Error ? e.message : String(e)) || '保存失败')
   } finally {
     submitting.value = false
   }
 }
 
-const remove = async (record) => {
+const remove = async (record: Product) => {
   await store.remove(record.id)
   message.success('已删除')
 }
@@ -79,14 +80,14 @@ const openImport = () => {
 
 /** 下载批量导入模板（表头为字段中文名，填好数据后可直接导入） */
 const downloadTemplate = () => {
-  const row = {}
+  const row: Record<string, string> = {}
   for (const f of sourceFields) row[f.label] = ''
   exportSheet([row], '商品批量导入模板')
 }
 
 /** 解析一行 CSV（支持双引号包裹与转义） */
-const csvLine = (line) => {
-  const out = []
+const csvLine = (line: string): string[] => {
+  const out: string[] = []
   let cur = ''
   let inQ = false
   for (let i = 0; i < line.length; i++) {
@@ -109,7 +110,7 @@ const csvLine = (line) => {
   return out
 }
 
-const parseCSV = (text) => {
+const parseCSV = (text: string): Record<string, string>[] => {
   const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '')
   if (!lines.length) return []
   const header = csvLine(lines[0]).map((h) => h.trim())
@@ -117,7 +118,7 @@ const parseCSV = (text) => {
     .slice(1)
     .map((line) => {
       const cells = csvLine(line)
-      const row = {}
+      const row: Record<string, string> = {}
       header.forEach((h, i) => {
         row[h] = (cells[i] ?? '').trim()
       })
@@ -127,29 +128,31 @@ const parseCSV = (text) => {
 }
 
 /** 把任意表头行映射到源字段 key，丢弃无法识别的列与空行 */
-const normalizeRow = (row) => {
-  const out = {}
+const normalizeRow = (row: Record<string, unknown>): Record<string, string | number> => {
+  const out: Record<string, string | number> = {}
   for (const [k, v] of Object.entries(row)) {
     if (v === '' || v == null) continue
     const key = headerKeyMap[String(k).trim()]
-    if (key) out[key] = v
+    // 导入单元格实际只会是 string/number，这里做贴合数据形态的窄化断言
+    if (key) out[key] = v as string | number
   }
   return out
 }
 
-const handleFileChange = async (e) => {
-  const file = e.target.files?.[0]
-  e.target.value = ''
+const handleFileChange = async (e: Event) => {
+  const el = e.target as HTMLInputElement
+  const file = el.files?.[0]
+  el.value = ''
   if (!file) return
   try {
-    let rows = []
+    let rows: Record<string, unknown>[] = []
     if (/\.(xlsx|xls)$/i.test(file.name)) {
       rows = await parseFileToRows(file)
     } else if (/\.csv$/i.test(file.name)) {
       rows = parseCSV(await parseTextFile(file))
     } else if (/\.json$/i.test(file.name)) {
-      const raw = JSON.parse(await parseTextFile(file))
-      rows = Array.isArray(raw) ? raw : []
+      const raw: unknown = JSON.parse(await parseTextFile(file))
+      rows = Array.isArray(raw) ? (raw as Record<string, unknown>[]) : []
     } else {
       message.error('仅支持 CSV / Excel / JSON 文件')
       return
@@ -162,12 +165,12 @@ const handleFileChange = async (e) => {
     const saved = await store.batchAdd(items)
     message.success(`成功导入 ${saved.length} 条商品`)
   } catch (err) {
-    message.error(err.message || '导入失败，请检查文件格式与表头')
+    message.error((err instanceof Error ? err.message : String(err)) || '导入失败，请检查文件格式与表头')
   }
 }
 
 /** 取商品主图（images 为逗号分隔 URL，取第一张） */
-const firstImage = (src) => {
+const firstImage = (src: unknown): string => {
   return String(src || '').split(',')[0].trim() || ''
 }
 

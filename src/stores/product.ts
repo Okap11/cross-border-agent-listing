@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import type { Product, ProductInput } from '../types/product'
 import {
   getAllProducts,
   saveProduct,
@@ -7,7 +8,7 @@ import {
 } from '../utils/db'
 
 export const useProductStore = defineStore('product', {
-  state: () => ({
+  state: (): { products: Product[]; loading: boolean; error: string | null } => ({
     products: [],
     loading: false,
     error: null
@@ -19,29 +20,29 @@ export const useProductStore = defineStore('product', {
     async load() {
       this.loading = true
       try {
-        this.products = await getAllProducts()
+        this.products = (await getAllProducts()) as Product[]
       } catch (e) {
-        this.error = e.message
+        this.error = e instanceof Error ? e.message : String(e)
       } finally {
         this.loading = false
       }
     },
-    async add(product) {
+    async add(product: ProductInput): Promise<Product> {
       const saved = await saveProduct(product)
       await this.load()
-      return saved
+      return saved as Product
     },
-    async batchAdd(products) {
+    async batchAdd(products: ProductInput[]): Promise<Product[]> {
       const saved = await saveProducts(products)
       await this.load()
-      return saved
+      return saved as Product[]
     },
-    async update(product) {
+    async update(product: ProductInput): Promise<Product> {
       const saved = await saveProduct(product)
       await this.load()
-      return saved
+      return saved as Product
     },
-    async remove(id) {
+    async remove(id: string) {
       await deleteProduct(id)
       await this.load()
     }

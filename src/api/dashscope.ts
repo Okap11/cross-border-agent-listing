@@ -11,10 +11,36 @@
  * 请求会走 Vite 代理路径 /dashscope，从而规避浏览器跨域限制。
  */
 
-const DEFAULT_BASE_URL = 'https://dashscope.aliyuncs.com'
+import { DEFAULT_DASHSCOPE_BASE_URL } from '../constants/llm'
+import type { ChatMessage } from '../types/llm'
 
-const normalizeBase = (baseUrl) => {
-  return (baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, '')
+/** 流式生成入参 */
+interface DashscopeStreamParams {
+  apiKey: string
+  baseUrl?: string
+  model: string
+  messages: ChatMessage[]
+  onChunk?: (text: string) => void
+  onDone?: (fullText: string) => void
+}
+
+/** 非流式生成入参 */
+interface DashscopeGenerateParams {
+  apiKey: string
+  baseUrl?: string
+  model: string
+  messages: ChatMessage[]
+  extra?: Record<string, unknown>
+}
+
+/** 模型列表 / 健康检查入参 */
+interface DashscopeListParams {
+  apiKey: string
+  baseUrl?: string
+}
+
+const normalizeBase = (baseUrl?: string): string => {
+  return (baseUrl || DEFAULT_DASHSCOPE_BASE_URL).replace(/\/+$/, '')
 }
 
 /**
@@ -22,7 +48,7 @@ const normalizeBase = (baseUrl) => {
  *  - 默认域名（dashscope.aliyuncs.com）=> 走 /dashscope 代理（dev 无 CORS）
  *  - 自定义域名（如不同地域 / 网关）=> 直连
  */
-const resolveEndpoint = (baseUrl, path) => {
+const resolveEndpoint = (baseUrl: string | undefined, path: string): string => {
   const base = normalizeBase(baseUrl)
   if (base.includes('dashscope.aliyuncs.com')) {
     return `/dashscope${path}`
@@ -30,7 +56,7 @@ const resolveEndpoint = (baseUrl, path) => {
   return `${base}${path}`
 }
 
-const authHeaders = (apiKey) => {
+const authHeaders = (apiKey: string): Record<string, string> => {
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${apiKey}`
@@ -39,15 +65,8 @@ const authHeaders = (apiKey) => {
 
 /**
  * 流式生成（OpenAI 兼容 chat/completions，stream: true）
- * @param {object} options
- * @param {string} options.apiKey
- * @param {string} [options.baseUrl]
- * @param {string} options.model  如 qwen-plus
- * @param {Array} options.messages [{role, content}]
- * @param {Function} options.onChunk (text)
- * @param {Function} options.onDone (fullText)
  */
-export const dashscopeStream = async ({ apiKey, baseUrl, model, messages, onChunk, onDone }) => {
+export const dashscopeStream = async ({ apiKey, baseUrl, model, messages, onChunk, onDone }: DashscopeStreamParams): Promise<void> => {
   if (!apiKey) throw new Error('未配置阿里百炼 API Key')
   if (!model) throw new Error('未指定百炼模型')
   const res = await fetch(resolveEndpoint(baseUrl, '/compatible-mode/v1/chat/completions'), {
@@ -59,7 +78,7 @@ export const dashscopeStream = async ({ apiKey, baseUrl, model, messages, onChun
     const errText = await res.text().catch(() => '')
     throw new Error(`百炼请求失败 (${res.status}): ${errText.slice(0, 200)}`)
   }
-  const reader = res.body.getReader()
+  const reader = res.body!.getReader()
   const decoder = new TextDecoder()
   let fullText = ''
   let buffer = ''
@@ -68,7 +87,7 @@ export const dashscopeStream = async ({ apiKey, baseUrl, model, messages, onChun
     if (done) break
     buffer += decoder.decode(value, { stream: true })
     const lines = buffer.split('\n')
-    buffer = lines.pop()
+    buffer = lines.pop()!
     for (const line of lines) {
       const trimmed = line.trim()
       if (!trimmed.startsWith('data:')) continue
@@ -78,7 +97,7 @@ export const dashscopeStream = async ({ apiKey, baseUrl, model, messages, onChun
         continue
       }
       try {
-        const json = JSON.parse(data)
+        const json = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> }
         const content = json.choices?.[0]?.delta?.content
         if (content) {
           fullText += content
@@ -95,7 +114,7 @@ export const dashscopeStream = async ({ apiKey, baseUrl, model, messages, onChun
 /**
  * 非流式生成
  */
-export const dashscopeGenerate = async ({ apiKey, baseUrl, model, messages, extra = {} }) => {
+export const dashscopeGenerate = async ({ apiKey, baseUrl, model, messages, extra = {} }: DashscopeGenerateParams): Promise<string> => {
   if (!apiKey) throw new Error('未配置阿里百炼 API Key')
   const res = await fetch(resolveEndpoint(baseUrl, '/compatible-mode/v1/chat/completions'), {
     method: 'POST',
@@ -106,7 +125,7 @@ export const dashscopeGenerate = async ({ apiKey, baseUrl, model, messages, extr
     const errText = await res.text().catch(() => '')
     throw new Error(`百炼请求失败 (${res.status}): ${errText.slice(0, 200)}`)
   }
-  const json = await res.json()
+  const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> }
   return json.choices?.[0]?.message?.content || ''
 }
 
@@ -114,20 +133,20 @@ export const dashscopeGenerate = async ({ apiKey, baseUrl, model, messages, extr
  * 获取百炼可用模型列表
  * GET /compatible-mode/v1/models
  */
-export const listDashscopeModels = async ({ apiKey, baseUrl }) => {
+export const listDashscopeModels = async ({ apiKey, baseUrl }: DashscopeListParams): Promise<string[]> => {
   const res = await fetch(resolveEndpoint(baseUrl, '/compatible-mode/v1/models'), {
     method: 'GET',
     headers: { Authorization: `Bearer ${apiKey}` }
   })
   if (!res.ok) throw new Error(`获取百炼模型失败 (${res.status})`)
-  const json = await res.json()
-  return (json.data || []).map((m) => m.id).filter(Boolean)
+  const json = await res.json() as { data?: Array<{ id?: string }> }
+  return (json.data || []).map((m) => m.id).filter(Boolean) as string[]
 }
 
 /**
  * 健康检查：API Key 与 Base URL 是否可用
  */
-export const checkDashscope = async ({ apiKey, baseUrl }) => {
+export const checkDashscope = async ({ apiKey, baseUrl }: DashscopeListParams): Promise<boolean> => {
   try {
     await listDashscopeModels({ apiKey, baseUrl })
     return true
