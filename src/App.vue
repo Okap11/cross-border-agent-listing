@@ -1,6 +1,6 @@
-<script setup>
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+<script setup lang="ts">
+import { ref, type Component } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useSettingsStore } from './stores/settings'
 import {
   DashboardOutlined,
@@ -12,13 +12,20 @@ import {
 } from '@ant-design/icons-vue'
 
 const route = useRoute()
-const selectedKeys = ref([route.path])
+const router = useRouter()
+const selectedKeys = ref<string[]>([route.path])
 
 // 应用启动即恢复本地 LLM 配置，保证刷新后各页面读取到已保存的后端设置
 const settings = useSettingsStore()
 settings.load()
 
-const menuItems = [
+interface MenuItem {
+  key: string
+  icon: Component
+  title: string
+}
+
+const menuItems: MenuItem[] = [
   { key: '/', icon: DashboardOutlined, title: '工作台' },
   { key: '/product', icon: ShoppingOutlined, title: '商品管理' },
   { key: '/mapping', icon: SwapOutlined, title: '字段映射' },
@@ -26,6 +33,12 @@ const menuItems = [
   { key: '/rag', icon: BarChartOutlined, title: '竞品评论分析' },
   { key: '/settings', icon: SettingOutlined, title: '模型设置' }
 ]
+
+const onMenuClick = ({ key }: { key: string | number }) => {
+  const target = String(key)
+  selectedKeys.value = [target]
+  router.push(target)
+}
 </script>
 
 <template>
@@ -36,7 +49,7 @@ const menuItems = [
         v-model:selectedKeys="selectedKeys"
         theme="dark"
         mode="inline"
-        @click="({ key }) => { selectedKeys = [key]; $router.push(key) }"
+        @click="onMenuClick"
       >
         <a-menu-item v-for="item in menuItems" :key="item.key">
           <component :is="item.icon" />
