@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { getAllComments, saveComments, clearComments } from '../utils/db'
-import { chunkText, buildIndex, search } from '../utils/vector'
+import { chunkText, buildIndex, selectContext } from '../utils/vector'
 import { getRagPrompt } from '../utils/prompt'
 import { streamGenerate } from '../api/llm'
 import type { CommentRecord } from '../types/storage'
@@ -24,6 +24,7 @@ export const useRagStore = defineStore('rag', {
     answer: string
     answering: boolean
     error: string | null
+    contextNote: string // 最近一次问答所用片段的来源说明
   } => ({
     comments: [],
     chunks: [],
@@ -31,7 +32,8 @@ export const useRagStore = defineStore('rag', {
     indexedCount: 0,
     answer: '',
     answering: false,
-    error: null
+    error: null,
+    contextNote: ''
   }),
   actions: {
     /** 导入评论文本并入库、分片、建索引 */
@@ -72,6 +74,7 @@ export const useRagStore = defineStore('rag', {
       this.chunks = []
       this.index = null
       this.indexedCount = 0
+      this.contextNote = ''
     },
 
     /**
@@ -90,14 +93,17 @@ export const useRagStore = defineStore('rag', {
         return
       }
       this.answer = ''
+      this.contextNote = ''
       this.answering = true
       this.error = null
       try {
-        const hits = search(this.index, this.chunks, question, 5)
+        // selectContext 保证只要导入了评论就一定拿到非空上下文（小语料给全文，大语料检索/抽样）
+        const { chunks: hits, note } = selectContext(this.index, this.chunks, question)
+        this.contextNote = note
         const context = hits
           .map((h, i) => `[片段${i + 1}] ${h.text}`)
           .join('\n---\n')
-        const prompt = getRagPrompt(question, context)
+        const prompt = getRagPrompt(question, context, note)
         await streamGenerate({
           ...cfg,
           prompt,

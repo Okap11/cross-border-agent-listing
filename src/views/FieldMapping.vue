@@ -28,6 +28,7 @@ const previewColumns = computed(() =>
     title: platformSchema[platform.value][key].label,
     dataIndex: platformSchema[platform.value][key].label,
     key,
+    width: 150,
     ellipsis: true
   }))
 )
@@ -83,7 +84,7 @@ onMounted(() => store.load())
         :columns="previewColumns"
         :data-source="mappedRows"
         :pagination="{ pageSize: 10 }"
-        :scroll="{ x: 900 }"
+        :scroll="{ x: previewColumns.length * 150 }"
         row-key="id"
       />
     </a-card>

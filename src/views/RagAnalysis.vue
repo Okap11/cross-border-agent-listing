@@ -36,7 +36,9 @@ const loadModels = async () => {
   }
 }
 
-const handleUpload = async ({ file }: { file: File }) => {
+// a-upload 的 beforeUpload 直接收到 File 本身（不是 { file }），返回 false 阻止真实上传
+const handleUpload = async (file: File) => {
+  if (!file) return false
   const isTxt = file.type === 'text/plain' || /\.(txt|csv)$/i.test(file.name)
   if (!isTxt) {
     message.error('请上传 .txt 或 .csv 文件')
@@ -45,7 +47,11 @@ const handleUpload = async ({ file }: { file: File }) => {
   try {
     const text = await parseTextFile(file)
     const count = await store.importComments(text)
-    message.success(`已导入 ${count} 条评论，建立 ${store.indexedCount} 个检索片段`)
+    if (!count) {
+      message.warning(store.error || '未解析到任何评论内容')
+    } else {
+      message.success(`已导入 ${count} 条评论，建立 ${store.indexedCount} 个检索片段`)
+    }
   } catch (e) {
     message.error('导入失败：' + (e instanceof Error ? e.message : String(e)))
   }
@@ -119,6 +125,9 @@ onMounted(async () => {
         <a-skeleton v-if="store.answering && !store.answer" active />
         <pre v-else-if="store.answer" class="answer-box">{{ store.answer }}</pre>
         <a-empty v-else description="上传评论并提问后，将基于本地召回片段生成分析结论" />
+        <div v-if="store.answer && store.contextNote" class="ctx-note">
+          本次分析的上下文：{{ store.contextNote }}
+        </div>
       </div>
       <a-alert
         v-if="store.error"
@@ -141,5 +150,11 @@ onMounted(async () => {
   max-height: 480px;
   overflow-y: auto;
   font-size: 14px;
+}
+
+.ctx-note {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #888;
 }
 </style>

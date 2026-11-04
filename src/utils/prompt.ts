@@ -64,15 +64,19 @@ export const getPrompt = (tplKey: PlatformKey, productInfo: string): string => {
 
 /**
  * 竞品评论分析专用 prompt（RAG 召回片段 + 用户问题）
+ * @param question 用户问题
+ * @param contextChunks 送入模型的评论片段
+ * @param contextNote 片段来源说明（全部原文 / 关键词命中 / 均匀抽样）
  */
-export const getRagPrompt = (question: string, contextChunks: string): string => {
+export const getRagPrompt = (question: string, contextChunks: string, contextNote?: string): string => {
   return `你是跨境电商选品与竞品分析专家。请基于以下从竞品评论中检索到的相关片段，回答用户的问题。
 要求：
 1. 只依据提供的片段回答，不要编造片段中没有的信息。
 2. 归纳出差评痛点、爆款卖点、以及建议改进点。
-3. 用中文回答，条理清晰，可分类列出。
+3. 评论多为英文原文，请统一用中文总结，同一卖点/痛点被多次提到时按大致出现频次排序。
+4. 若片段确实没有涉及问题中的某个方面，直接说明「当前评论中未提及该方面」，不要硬凑。
 
-检索到的相关评论片段：
+检索到的相关评论片段${contextNote ? `（${contextNote}）` : ''}：
 ${contextChunks}
 
 用户问题：${question}

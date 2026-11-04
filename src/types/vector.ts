@@ -25,3 +25,9 @@ export interface VectorIndex {
 export interface ScoredChunk extends ChunkDoc {
   score: number
 }
+
+/** selectContext 的返回：本次实际送入 prompt 的片段 + 来源说明 */
+export interface ContextSelection {
+  chunks: ScoredChunk[]
+  note: string
+}

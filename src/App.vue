@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, type Component } from 'vue'
+import { ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useSettingsStore } from './stores/settings'
 import {
@@ -14,6 +14,14 @@ import {
 const route = useRoute()
 const router = useRouter()
 const selectedKeys = ref<string[]>([route.path])
+
+// 同步侧边栏高亮：除菜单点击外，刷新页面 / 浏览器前进后退 / 直接改 hash 也要跟随当前路由
+watch(
+  () => route.path,
+  (p) => {
+    selectedKeys.value = [p]
+  }
+)
 
 // 应用启动即恢复本地 LLM 配置，保证刷新后各页面读取到已保存的后端设置
 const settings = useSettingsStore()

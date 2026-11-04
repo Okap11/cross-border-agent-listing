@@ -47,7 +47,18 @@ export const useSettingsStore = defineStore('settings', {
     },
     /** 保存配置到本地 */
     async save() {
-      await settingsInstance.setItem('llm', this.llm)
+      // 不能直接存 this.llm：它是 Pinia 的响应式 Proxy，IndexedDB 的 structured clone
+      // 克隆 Proxy 会抛 DataCloneError，导致配置静默保存失败（刷新后 Key 丢失）。
+      const plain: LLMSettings = {
+        backend: this.llm.backend,
+        ollamaModel: this.llm.ollamaModel,
+        dashscope: {
+          apiKey: this.llm.dashscope.apiKey,
+          model: this.llm.dashscope.model,
+          baseUrl: this.llm.dashscope.baseUrl
+        }
+      }
+      await settingsInstance.setItem('llm', plain)
     },
     /** 便捷：返回当前生效的模型名 */
     currentModel() {

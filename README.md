@@ -20,6 +20,25 @@
 - ✅ **Local-First**：全部数据保存在浏览器 IndexedDB，无后端、可离线
 - ✅ 纯前端静态页面，可部署到 GitHub Pages / Vercel 等任意静态托管
 
+## 🖼️ 界面预览
+
+> 截图取自本地构建版本，商品与评论均为演示数据（`sample-data/` 里的 Shein 评论 + 4 条示例商品）。
+
+<p align="center">
+  <img src="docs/images/home.png" width="49%" alt="工作台：商品数、评论片段数、AI 后端状态与核心功能入口" />
+  <img src="docs/images/product-edit.png" width="49%" alt="商品管理：统一源商品列表，支持新增 / 批量导入 / 导出模板" />
+</p>
+
+<p align="center">
+  <img src="docs/images/field-mapping.png" width="49%" alt="字段映射：Ozon / Shein 字段映射规则与导出预览" />
+  <img src="docs/images/ai-generate.png" width="49%" alt="AI Listing 生成：流式输出标题、五点描述与关键词" />
+</p>
+
+<p align="center">
+  <img src="docs/images/rag-analysis.png" width="49%" alt="竞品评论分析：基于本地评论片段的中文 RAG 问答" />
+  <img src="docs/images/model-settings.png" width="49%" alt="模型设置：Ollama / 阿里云百炼切换，配置仅保存在浏览器本地" />
+</p>
+
 ## 📋 上架字段依据
 
 「新增商品」的字段与 Ozon / SHEIN 平台映射，基于**官方资料调研**整理，而非臆造：
@@ -89,6 +108,9 @@ npm run format    # Prettier 格式化
 ```
 cross-border-agent-listing/
 ├── .github/                  # GitHub 配置（CI 等）
+├── docs/
+│   ├── roadmap.md            # 功能规划
+│   └── images/               # README 界面截图
 ├── public/
 ├── src/
 │   ├── api/
